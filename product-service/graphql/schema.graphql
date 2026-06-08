@@ -1,0 +1,10 @@
+type Query {
+  user(id: ID @eq): User @find(model: "App\\Models\\User")
+  users: [User!]! @all(model: "App\\Models\\User")
+}
+
+type User {
+  id: ID!
+  name: String!
+  email: String!
+}
