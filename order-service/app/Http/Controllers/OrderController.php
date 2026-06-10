@@ -2,115 +2,71 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Controller;
 use App\Models\Order;
-use App\Models\OrderItem;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Redis;
 
 class OrderController extends Controller
 {
-    public function index()
-    {
-        $orders = Order::with('items')->get();
-        return response()->json($orders);
-    }
-
-    public function show($id)
-    {
-        $order = Order::with('items')->find($id);
-        if (!$order) {
-            return response()->json(['message' => 'Order not found'], 404);
-        }
-
-        // Ambil data user dari user-service
-        $userResponse = Http::get(env('USER_SERVICE_URL') . '/api/users/' . $order->user_id);
-        $user = $userResponse->successful() ? $userResponse->json() : null;
-
-        // Ambil data produk tiap item dari product-service
-        $items = $order->items->map(function ($item) {
-            $productResponse = Http::get(env('PRODUCT_SERVICE_URL') . '/api/products/' . $item->product_id);
-            $product = $productResponse->successful() ? $productResponse->json() : null;
-            return array_merge($item->toArray(), ['product' => $product]);
-        });
-
-        return response()->json([
-            'order' => $order,
-            'user'  => $user,
-            'items' => $items,
-        ]);
-    }
-
     public function store(Request $request)
     {
+        // 1. Validasi Input API
         $request->validate([
-            'user_id'            => 'required|integer',
-            'items'              => 'required|array|min:1',
-            'items.*.product_id' => 'required|integer',
-            'items.*.quantity'   => 'required|integer|min:1',
+            'user_id' => 'required|integer',
+            'product_id' => 'required|integer',
+            'quantity' => 'required|integer|min:1',
+            'total_price' => 'required|numeric'
         ]);
 
-        // Validasi user ke user-service
-        $userResponse = Http::get(env('USER_SERVICE_URL') . '/api/users/' . $request->user_id);
-        if (!$userResponse->successful()) {
-            return response()->json(['message' => 'User tidak ditemukan'], 404);
-        }
-
-        $totalPrice = 0;
-        $itemsData  = [];
-
-        // Validasi produk & hitung total ke product-service
-        foreach ($request->items as $item) {
-            $productResponse = Http::get(env('PRODUCT_SERVICE_URL') . '/api/products/' . $item['product_id']);
-            if (!$productResponse->successful()) {
-                return response()->json(['message' => 'Produk ID ' . $item['product_id'] . ' tidak ditemukan'], 404);
-            }
-
-            $product = $productResponse->json();
-
-            if ($product['stock'] < $item['quantity']) {
-                return response()->json(['message' => 'Stok produk ' . $product['name'] . ' tidak cukup'], 400);
-            }
-
-            $subtotal    = $product['price'] * $item['quantity'];
-            $totalPrice += $subtotal;
-
-            $itemsData[] = [
-                'product_id' => $item['product_id'],
-                'quantity'   => $item['quantity'],
-                'price'      => $product['price'],
-            ];
-        }
-
-        // Buat order
+        // 2. Simpan Order ke Database (Status: Pending)
         $order = Order::create([
-            'user_id'     => $request->user_id,
-            'total_price' => $totalPrice,
-            'status'      => 'pending',
+            'user_id' => $request->user_id,
+            'product_id' => $request->product_id,
+            'quantity' => $request->quantity,
+            'total_price' => $request->total_price,
+            'status' => 'pending'
         ]);
 
-        // Simpan order items & kurangi stok
-        foreach ($itemsData as $itemData) {
-            OrderItem::create(array_merge($itemData, ['order_id' => $order->id]));
+        // 3. Siapkan Payload Message untuk Service Lain
+        $messagePayload = json_encode([
+            'event' => 'OrderCreated',
+            'order_id' => $order->id,
+            'user_id' => $order->user_id,
+            'product_id' => $order->product_id,
+            'quantity' => $order->quantity,
+            'total_price' => $order->total_price,
+            'timestamp' => now()->toDateTimeString()
+        ]);
 
-            Http::post(
-                env('PRODUCT_SERVICE_URL') . '/api/products/' . $itemData['product_id'] . '/reduce-stock',
-                ['quantity' => $itemData['quantity']]
-            );
-        }
+        // 4. Publish Message ke Redis Channel 'order_events' (Asinkron)
+        // Service Product & Notification nantinya akan melakukan 'Subscribe' ke channel ini
+        Redis::publish('order_events', $messagePayload);
 
-        return response()->json($order->load('items'), 201);
+        // 5. Kembalikan Response ke Client (Sangat cepat karena tidak menunggu proses notifikasi/stok)
+        return response()->json([
+            'success' => true,
+            'message' => 'Order is being processed',
+            'data' => $order
+        ], 201);
+
+        ProcessOrderCreated::dispatch($order);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Order is being processed via Queue',
+            'data' => $order
+        ], 201);
     }
 
-    public function updateStatus(Request $request, $id)
+    public function index(Request $request)
     {
-        $order = Order::find($id);
-        if (!$order) {
-            return response()->json(['message' => 'Order not found'], 404);
-        }
+        // Mengambil order berdasarkan user (misal user_id dikirim via query param atau token)
+        $orders = Order::where('user_id', $request->user_id)->get();
 
-        $request->validate(['status' => 'required|in:pending,processing,completed,cancelled']);
-        $order->update(['status' => $request->status]);
-
-        return response()->json($order);
+        return response()->json([
+            'success' => true,
+            'data' => $orders
+        ], 200);
     }
 }
