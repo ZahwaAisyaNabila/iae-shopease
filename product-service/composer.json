@@ -11,7 +11,8 @@
         "laravel/tinker": "^3.0",
         "mll-lab/laravel-graphiql": "^4.1",
         "mll-lab/laravel-graphql-playground": "*",
-        "nuwave/lighthouse": "^6.67"
+        "nuwave/lighthouse": "*",
+        "predis/predis": "^3.5"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

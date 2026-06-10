@@ -1,10 +1,15 @@
-type Query {
-  user(id: ID @eq): User @find(model: "App\\Models\\User")
-  users: [User!]! @all(model: "App\\Models\\User")
+type Product {
+    id: ID!
+    name: String!
+    price: Int!
+    stock: Int!
 }
 
-type User {
-  id: ID!
-  name: String!
-  email: String!
+type Query {
+    products: [Product!]! @all
+    product(id: ID! @eq): Product @find
+}
+
+type Mutation {
+    createProduct(name: String!, price: Int!, stock: Int!): Product!
 }

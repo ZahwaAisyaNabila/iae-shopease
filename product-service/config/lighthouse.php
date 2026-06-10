@@ -18,4 +18,10 @@ return [
         'enable' => env('LIGHTHOUSE_SCHEMA_CACHE_ENABLE', env('APP_ENV') !== 'local'),
         'path' => env('LIGHTHOUSE_SCHEMA_CACHE_PATH', base_path('bootstrap/cache/lighthouse-schema.php')),
     ],
+
+    'query_cache' => [
+        'enable' => false, // UBAH DARI true KE false
+        'store' => env('LIGHTHOUSE_QUERY_CACHE_STORE', null),
+        'ttl' => env('LIGHTHOUSE_QUERY_CACHE_TTL', null),
+    ],
 ];
