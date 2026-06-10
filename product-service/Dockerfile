@@ -28,11 +28,11 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg && \
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 # Copy dependency files
-COPY composer.json composer.lock package.json package-lock.json ./
+COPY composer.json composer.lock package.json ./
 
 # Install PHP and Node dependencies
 RUN composer install --no-dev --optimize-autoloader && \
-    npm ci --omit=dev
+    npm install --omit=dev
 
 # Copy application code
 COPY . .
@@ -72,9 +72,6 @@ RUN addgroup -g 1000 laravel && \
 RUN chown -R laravel:laravel /app && \
     chmod -R 755 /app/storage && \
     chmod -R 755 /app/bootstrap/cache
-
-# Copy PHP configuration
-COPY docker/php.ini /usr/local/etc/php/conf.d/app.ini
 
 USER laravel
 
