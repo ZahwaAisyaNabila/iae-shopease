@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: laravel-app
+    container_name: ahopease-product-service
     restart: unless-stopped
     working_dir: /app
     environment:
@@ -30,7 +30,7 @@ services:
 
   nginx:
     image: nginx:alpine
-    container_name: laravel-nginx
+    container_name: product-nginx
     restart: unless-stopped
     working_dir: /app
     volumes:
