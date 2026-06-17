@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  # Service untuk Laravel (User Service)
+  user-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: user_service_app
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "8001:8000" # Kita petakan port 8001 di laptop Anda ke port 8000 di container
+    volumes:
+      - .:/var/www
+    depends_on:
+      - user-db
+    networks:
+      - online-shop-network
+
+  # Service untuk Database MySQL
+  user-db:
+    image: mysql:8.0
+    container_name: user_service_db
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "33061:3306" # Dipetakan ke port 33061 di luar agar tidak bentrok dengan MySQL lokal
+    environment:
+      MYSQL_DATABASE: db_user_service
+      MYSQL_ROOT_PASSWORD: root_password
+    volumes:
+      - user_db_data:/var/lib/mysql
+    networks:
+      - online-shop-network
+
+networks:
+  online-shop-network:
+    driver: bridge
+
+volumes:
+  user_db_data:
