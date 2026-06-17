@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  user-service:
+    build:
+      context: ./user-service # Jalur ke folder service user
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001" # Sesuaikan [Port Luar]:[Port Dalam Docker]
+    environment:
+      - DB_HOST=db-user # Contoh jika pakai DB sendiri
+
+  order-service:
+    build:
+      context: ./order-service
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8002"
+    depends_on:
+      - user-service # Service order baru jalan setelah service user siap
+
+  product-service:
+    build:
+      context: ./product-service
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8003"
+
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    ports:
+      - "8004:8004"
+    depends_on:
+      - order-service # Contoh: jika notifikasi nunggu order jalan dulu
