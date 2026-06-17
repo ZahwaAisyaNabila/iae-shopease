@@ -1,0 +1,64 @@
+services:
+  # Laravel App (development) - uses php artisan serve for hot reload
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    image: laravel-notification-app:dev
+    container_name: notification-app
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/var/www
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    command: php artisan serve --host=0.0.0.0 --port=8000
+    develop:
+      watch:
+        - path: ./app
+          action: sync
+          target: /var/www/app
+        - path: ./routes
+          action: sync
+          target: /var/www/routes
+        - path: ./resources
+          action: sync
+          target: /var/www/resources
+
+  # Queue Worker - processes background jobs
+  queue-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    image: laravel-notification-app:dev
+    container_name: notification-worker
+    restart: unless-stopped
+    volumes:
+      - .:/var/www
+    depends_on:
+      - app
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    command: php artisan queue:work
+
+  # Redis Database
+  redis:
+    image: redis:alpine
+    container_name: notification-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:
