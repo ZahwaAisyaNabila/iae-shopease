@@ -10,12 +10,9 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-
             $table->string('name');
             $table->string('email')->unique();
-            $table->string('phone')->nullable();
-            $table->text('address')->nullable();
-
+            $table->string('password'); // Kolom untuk menyimpan password yang sudah di-hash
             $table->timestamps();
         });
     }

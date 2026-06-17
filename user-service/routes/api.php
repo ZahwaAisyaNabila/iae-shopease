@@ -1,20 +1,11 @@
 <?php
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
+use Illuminate\Support\Facades\Route;
 
-Route::get('/users/{id}/orders', [UserController::class, 'getUserOrders']);
-
-// Get all users
-Route::get('/users', [UserController::class, 'index']);
-
-// Get user by ID (dipakai oleh OrderService)
-Route::get('/users/{id}', [UserController::class, 'show']);
-
-// Create user
-Route::post('/users', [UserController::class, 'store']);
-
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+Route::prefix('v1/users')->group(function () {
+    Route::get('/', [UserController::class, 'index']);     // Mendapatkan semua user
+    Route::get('/{id}', [UserController::class, 'show']);  // Mendapatkan detail user berdasarkan ID
+    Route::post('/', [UserController::class, 'store']);    // POST user baru
 });

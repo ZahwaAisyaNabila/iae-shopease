@@ -2,107 +2,71 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\User;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
 {
-    // ✅ GET ALL USERS
+    // 1. GET ALL USERS (Melihat semua user)
     public function index()
     {
-        try {
-            $users = User::all();
-
-            return response()->json([
-                "message" => "List of users",
-                "data" => $users
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                "error" => $e->getMessage()
-            ], 500);
-        }
+        // Karena 'password' ada di properti $hidden pada Model,
+        // list user yang dikembalikan tidak akan menampilkan kolom password.
+        return response()->json([
+            'status' => 'success',
+            'data' => User::all()
+        ], 200);
     }
 
-    // ✅ GET USER BY ID
+    // 2. GET USER BY ID (Digunakan untuk verifikasi oleh Order Service)
     public function show($id)
     {
-        try {
-            $user = User::find($id);
+        $user = User::find($id);
 
-            if (!$user) {
-                return response()->json([
-                    "message" => "User not found"
-                ], 404);
-            }
-
+        if (!$user) {
             return response()->json([
-                "message" => "User detail",
-                "data" => $user
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                "error" => $e->getMessage()
-            ], 500);
+                'status' => 'error',
+                'message' => 'User not found'
+            ], 404);
         }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $user
+        ], 200);
     }
 
-    // ✅ CREATE USER (INI YANG SERING ERROR)
+    // 3. POST / CREATE NEW USER (Menambahkan user beserta password)
     public function store(Request $request)
     {
-        try {
-            // 🔍 Validasi
-            $validated = $request->validate([
-                "name" => "required|string|max:255",
-                "email" => "required|email|unique:users,email",
-                "phone" => "nullable|string|max:20",
-                "address" => "nullable|string"
-            ]);
+        // Aturan validasi input data
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email',
+            'password' => 'required|string|min:6', // Validasi password minimal 6 karakter
+        ]);
 
-            // 🔥 Simpan ke DB
-            $user = User::create($validated);
-
+        if ($validator->fails()) {
             return response()->json([
-                "message" => "User created successfully",
-                "data" => $user
-            ], 201);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                "message" => "Error creating user",
-                "error" => $e->getMessage()
-            ], 500);
+                'status' => 'error',
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 400);
         }
-    }
 
-    // 🔥 CONSUMER → ambil data order
-    public function getUserOrders($id)
-    {
-        try {
-            $user = User::find($id);
+        // Simpan data ke MySQL secara sinkronus
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password), // Meng-hash password teks biasa menjadi Bcrypt aman
+        ]);
 
-            if (!$user) {
-                return response()->json([
-                    "message" => "User not found"
-                ], 404);
-            }
-
-            $orderServiceUrl = env('ORDER_SERVICE_URL');
-
-            $response = Http::get($orderServiceUrl . "/api/orders/user/" . $id);
-
-            return response()->json([
-                "message" => "User orders fetched",
-                "user" => $user,
-                "orders" => $response->json()
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                "message" => "Failed connect to OrderService",
-                "error" => $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'status' => 'success',
+            'message' => 'User successfully created',
+            'data' => $user
+        ], 201);
     }
 }
