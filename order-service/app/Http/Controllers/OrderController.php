@@ -46,27 +46,29 @@ class OrderController extends Controller
         // 5. Kembalikan Response ke Client (Sangat cepat karena tidak menunggu proses notifikasi/stok)
         return response()->json([
             'success' => true,
-            'message' => 'Order is being processed',
-            'data' => $order
-        ], 201);
-
-        ProcessOrderCreated::dispatch($order);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Order is being processed via Queue',
+            'message' => 'Order is being processed and event published',
             'data' => $order
         ], 201);
     }
 
     public function index(Request $request)
     {
-        // Mengambil order berdasarkan user (misal user_id dikirim via query param atau token)
-        $orders = Order::where('user_id', $request->user_id)->get();
+        $query = Order::query()->latest();
+
+        // Tanpa parameter: tampilkan semua order untuk kebutuhan dashboard/demo.
+        // Dengan ?user_id=1: tampilkan riwayat milik user tertentu.
+        if ($request->filled('user_id')) {
+            $query->where('user_id', $request->integer('user_id'));
+        }
 
         return response()->json([
             'success' => true,
-            'data' => $orders
+            'data' => $query->get()
         ], 200);
+    }
+
+    public function show(Order $order)
+    {
+        return response()->json(['success' => true, 'data' => $order]);
     }
 }

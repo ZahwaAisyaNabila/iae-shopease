@@ -7,6 +7,17 @@ use Illuminate\Http\Request;
 
 class NotificationController extends Controller
 {
+    public function index(Request $request)
+    {
+        $query = \App\Models\Notification::query()->latest();
+
+        if ($request->filled('user_id')) {
+            $query->where('user_id', $request->integer('user_id'));
+        }
+
+        return response()->json(['status' => 'success', 'data' => $query->get()]);
+    }
+
     public function send(Request $request)
     {
         $validated = $request->validate([

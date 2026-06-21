@@ -1,36 +1,112 @@
-version: '3.8'
-
 services:
-  user-service:
-    build:
-      context: ./user-service # Jalur ke folder service user
-      dockerfile: Dockerfile
-    ports:
-      - "8001:8001" # Sesuaikan [Port Luar]:[Port Dalam Docker]
-    environment:
-      - DB_HOST=db-user # Contoh jika pakai DB sendiri
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
 
-  order-service:
-    build:
-      context: ./order-service
-      dockerfile: Dockerfile
-    ports:
-      - "8002:8002"
-    depends_on:
-      - user-service # Service order baru jalan setelah service user siap
+  user-db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: user_service
+      MYSQL_ROOT_PASSWORD: secret
+    volumes: [user-db-data:/var/lib/mysql]
+
+  order-db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: order_service
+      MYSQL_ROOT_PASSWORD: secret
+    volumes: [order-db-data:/var/lib/mysql]
+
+  notification-db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: notification_service
+      MYSQL_ROOT_PASSWORD: secret
+    volumes: [notification-db-data:/var/lib/mysql]
+
+  user-service:
+    build: ./user-service
+    command: sh -c "until php artisan migrate --force; do sleep 5; done; php artisan serve --host=0.0.0.0 --port=8000"
+    ports: ["8001:8000"]
+    depends_on: [user-db]
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_KEY: base64:2bFozh04O2QRMqDLcDCwuuy6KoBQBkdGQj3wgAqIyA4=
+      DB_CONNECTION: mysql
+      DB_HOST: user-db
+      DB_PORT: 3306
+      DB_DATABASE: user_service
+      DB_USERNAME: root
+      DB_PASSWORD: secret
 
   product-service:
-    build:
-      context: ./product-service
-      dockerfile: Dockerfile
-    ports:
-      - "8003:8003"
+    build: ./product-service
+    command: sh -c "touch database/database.sqlite && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=8000"
+    ports: ["8003:8000"]
+    depends_on: [redis]
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_KEY: base64:2bFozh04O2QRMqDLcDCwuuy6KoBQBkdGQj3wgAqIyA4=
+      DB_CONNECTION: sqlite
+      DB_DATABASE: /app/database/database.sqlite
+      REDIS_HOST: redis
+      QUEUE_CONNECTION: sync
+
+  order-service:
+    build: ./order-service
+    command: sh -c "until php artisan migrate --force; do sleep 5; done; php artisan serve --host=0.0.0.0 --port=8000"
+    ports: ["8002:8000"]
+    depends_on: [order-db, redis]
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_KEY: base64:2bFozh04O2QRMqDLcDCwuuy6KoBQBkdGQj3wgAqIyA4=
+      DB_CONNECTION: mysql
+      DB_HOST: order-db
+      DB_PORT: 3306
+      DB_DATABASE: order_service
+      DB_USERNAME: root
+      DB_PASSWORD: secret
+      REDIS_HOST: redis
+      QUEUE_CONNECTION: sync
 
   notification-service:
-    build:
-      context: ./notification-service
-      dockerfile: Dockerfile
-    ports:
-      - "8004:8004"
-    depends_on:
-      - order-service # Contoh: jika notifikasi nunggu order jalan dulu
+    build: ./notification-service
+    command: sh -c "until php artisan migrate --force; do sleep 5; done; php artisan serve --host=0.0.0.0 --port=8000"
+    ports: ["8004:8000"]
+    depends_on: [notification-db, redis]
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_KEY: base64:2bFozh04O2QRMqDLcDCwuuy6KoBQBkdGQj3wgAqIyA4=
+      DB_CONNECTION: mysql
+      DB_HOST: notification-db
+      DB_PORT: 3306
+      DB_DATABASE: notification_service
+      DB_USERNAME: root
+      DB_PASSWORD: secret
+      REDIS_HOST: redis
+      QUEUE_CONNECTION: sync
+
+  notification-event-consumer:
+    build: ./notification-service
+    command: sh -c "until php artisan orders:subscribe; do sleep 5; done"
+    depends_on: [notification-db, redis, notification-service]
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_KEY: base64:2bFozh04O2QRMqDLcDCwuuy6KoBQBkdGQj3wgAqIyA4=
+      DB_CONNECTION: mysql
+      DB_HOST: notification-db
+      DB_PORT: 3306
+      DB_DATABASE: notification_service
+      DB_USERNAME: root
+      DB_PASSWORD: secret
+      REDIS_HOST: redis
+
+volumes:
+  user-db-data:
+  order-db-data:
+  notification-db-data:
