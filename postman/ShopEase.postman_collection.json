@@ -1,0 +1,75 @@
+{
+  "info": {"name":"ShopEase Microservices","schema":"https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},
+  "event": [{
+    "listen": "test",
+    "script": {
+      "exec": [
+        "const expectedMatch = pm.info.requestName.match(/expected (\\d+)/i);",
+        "if (expectedMatch) {",
+        "  const expectedStatus = Number(expectedMatch[1]);",
+        "  pm.test(`Expected HTTP ${expectedStatus}`, function () { pm.response.to.have.status(expectedStatus); });",
+        "} else {",
+        "  pm.test('Expected successful HTTP response', function () { pm.expect(pm.response.code).to.be.below(300); });",
+        "}"
+      ]
+    }
+  }],
+  "variable": [
+    {"key":"user_service_url","value":"http://localhost:8001"},
+    {"key":"product_service_url","value":"http://localhost:8003"},
+    {"key":"order_service_url","value":"http://localhost:8002"},
+    {"key":"notification_service_url","value":"http://localhost:8004"},
+    {"key":"user_id","value":"1"},
+    {"key":"product_id","value":"1"},
+    {"key":"order_id","value":"1"}
+  ],
+  "item": [
+    {"name":"1. User Service","item":[
+      {"name":"SUCCESS - Expected 200/201","item":[
+        {"name":"Create user 1 - Alya Fazaristi","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"name\": \"Alya Fazaristi\",\n  \"email\": \"alyafazaristi@student.telkomuniversity.ac.id\",\n  \"password\": \"alyafazaristi\"\n}"},"url":"{{user_service_url}}/api/v1/users"}},
+        {"name":"Create user 2 - Karin Zalfa Santoso","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"name\": \"Karin Zalfa Santoso\",\n  \"email\": \"karinzalfasantoso@student.telkomuniversity.ac.id\",\n  \"password\": \"karinzalfasantoso\"\n}"},"url":"{{user_service_url}}/api/v1/users"}},
+        {"name":"Create user 3 - Rr Khaila Widyaloka","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"name\": \"Rr Khaila Widyaloka\",\n  \"email\": \"rrkhailawidyaloka@student.telkomuniversity.ac.id\",\n  \"password\": \"rrkhailawidyaloka\"\n}"},"url":"{{user_service_url}}/api/v1/users"}},
+        {"name":"Create user 4 - Zahwa Aisya Nabila","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"name\": \"Zahwa Aisya Nabila\",\n  \"email\": \"zahwaaisyanabila@student.telkomuniversity.ac.id\",\n  \"password\": \"zahwaaisyanabila\"\n}"},"url":"{{user_service_url}}/api/v1/users"}},
+        {"name":"List users","request":{"method":"GET","url":"{{user_service_url}}/api/v1/users"}},
+        {"name":"Get user by ID","request":{"method":"GET","url":"{{user_service_url}}/api/v1/users/{{user_id}}"}}
+      ]},
+      {"name":"FAIL - Expected 400/404","item":[
+        {"name":"Duplicate email - expected 400","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"name\": \"...\",\n  \"email\": \"alyafazaristi@student.telkomuniversity.ac.id\",\n  \"password\": \"alyafazaristi\"\n}"},"url":"{{user_service_url}}/api/v1/users"}},
+        {"name":"Invalid payload - expected 400","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"name\": \"...\"\n}"},"url":"{{user_service_url}}/api/v1/users"}},
+        {"name":"User not found - expected 404","request":{"method":"GET","url":"{{user_service_url}}/api/v1/users/999999"}}
+      ]}
+    ]},
+    {"name":"2. Product Service","item":[
+      {"name":"SUCCESS - Expected 200/201","item":[
+        {"name":"Create product - GraphQL","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"query\": \"mutation { createProduct(name: \\\"Sample Product\\\", price: 250000, stock: 10) { id name price stock } }\"\n}"},"url":"{{product_service_url}}/graphql"}},
+        {"name":"List products - GraphQL","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"query\": \"{ products { id name price stock } }\"\n}"},"url":"{{product_service_url}}/graphql"}},
+        {"name":"List products - REST","request":{"method":"GET","url":"{{product_service_url}}/api/products"}},
+        {"name":"Get product by ID - REST","request":{"method":"GET","url":"{{product_service_url}}/api/products/{{product_id}}"}}
+      ]},
+      {"name":"FAIL - Expected 404/422","item":[
+        {"name":"Invalid product payload - expected 422","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"name\": \"...\",\n  \"price\": -1,\n  \"stock\": -1\n}"},"url":"{{product_service_url}}/api/products"}},
+        {"name":"Product not found - expected 404","request":{"method":"GET","url":"{{product_service_url}}/api/products/999999"}}
+      ]}
+    ]},
+    {"name":"3. Order Service","item":[
+      {"name":"SUCCESS - Expected 200/201","item":[
+        {"name":"Create order and publish OrderCreated","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"user_id\": {{user_id}},\n  \"product_id\": {{product_id}},\n  \"quantity\": 1,\n  \"total_price\": 250000\n}"},"url":"{{order_service_url}}/api/orders"}},
+        {"name":"List orders for user","request":{"method":"GET","url":"{{order_service_url}}/api/orders?user_id={{user_id}}"}},
+        {"name":"Get order by ID","request":{"method":"GET","url":"{{order_service_url}}/api/orders/{{order_id}}"}}
+      ]},
+      {"name":"FAIL - Expected 404/422","item":[
+        {"name":"Quantity 0 - expected 422","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"user_id\": {{user_id}},\n  \"product_id\": {{product_id}},\n  \"quantity\": 0,\n  \"total_price\": 250000\n}"},"url":"{{order_service_url}}/api/orders"}},
+        {"name":"Order not found - expected 404","request":{"method":"GET","url":"{{order_service_url}}/api/orders/999999"}}
+      ]}
+    ]},
+    {"name":"4. Notification Service","item":[
+      {"name":"SUCCESS - Expected 200/202","item":[
+        {"name":"List notifications from Redis event","request":{"method":"GET","url":"{{notification_service_url}}/api/notifications?user_id={{user_id}}"}},
+        {"name":"Send notification manually","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"user_id\": {{user_id}},\n  \"type\": \"order_created\",\n  \"recipient_channel\": \"email\",\n  \"message\": \"...\"\n}"},"url":"{{notification_service_url}}/api/notifications/send"}}
+      ]},
+      {"name":"FAIL - Expected 422","item":[
+        {"name":"Invalid notification payload - expected 422","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"user_id\": {{user_id}}\n}"},"url":"{{notification_service_url}}/api/notifications/send"}}
+      ]}
+    ]}
+  ]
+}

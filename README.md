@@ -29,18 +29,23 @@ Setiap service memiliki ownership database sendiri; ID user dan produk hanya dir
 ## API demo
 
 ```bash
+# Ganti setiap placeholder "..." sesuai data uji Anda.
 # Buat user
-curl -X POST http://localhost:8001/api/v1/users -H "Content-Type: application/json" -d '{"name":"Garda","email":"garda@example.com","password":"secret12"}'
+curl -X POST http://localhost:8001/api/v1/users -H "Content-Type: application/json" -d '{"name":"...","email":"...","password":"..."}'
 
 # Buat produk melalui GraphQL
-curl http://localhost:8003/graphql -H "Content-Type: application/json" -d '{"query":"mutation { createProduct(name: \"Keyboard\", price: 250000, stock: 10) { id name price stock } }"}'
+curl http://localhost:8003/graphql -H "Content-Type: application/json" -d '{"query":"mutation { createProduct(name: \"...\", price: 0, stock: 0) { id name price stock } }"}'
 
 # Pesan produk. Request ini menyimpan order dan menerbitkan event OrderCreated ke Redis.
-curl -X POST http://localhost:8002/api/orders -H "Content-Type: application/json" -d '{"user_id":1,"product_id":1,"quantity":1,"total_price":250000}'
+curl -X POST http://localhost:8002/api/orders -H "Content-Type: application/json" -d '{"user_id":0,"product_id":0,"quantity":0,"total_price":0}'
 
 # Consumer `notification-event-consumer` otomatis membuat notifikasi ketika menerima OrderCreated.
 # Endpoint manual untuk membuat notifikasi juga tersedia:
-curl -X POST http://localhost:8004/api/notifications/send -H "Content-Type: application/json" -d '{"user_id":1,"type":"order_created","recipient_channel":"email","message":"Pesanan Anda diterima"}'
+curl -X POST http://localhost:8004/api/notifications/send -H "Content-Type: application/json" -d '{"user_id":0,"type":"...","recipient_channel":"...","message":"..."}'
 ```
 
 GraphQL playground tersedia bila paket Lighthouse mengaktifkannya; endpoint standar adalah `POST /graphql`. REST produk ada di `/api/products`.
+
+## Postman
+
+Import [koleksi Postman](postman/ShopEase.postman_collection.json) lalu jalankan request dengan urutan: **Create user 1 sampai 4**, **Create product (GraphQL)**, **Create order**, dan **List notifications**. Collection secara otomatis menyimpan `user_id`, `product_id`, dan `order_id` dari respons create untuk dipakai request berikutnya. Request bertanda `FAIL` mendemonstrasikan respons validasi, data duplikat, atau data tidak ditemukan.

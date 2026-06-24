@@ -1,8 +1,8 @@
 FROM php:8.4-cli-alpine
 
 WORKDIR /var/www
-RUN apk add --no-cache git unzip libzip-dev libxml2-dev oniguruma-dev sqlite-dev $PHPIZE_DEPS \
-    && docker-php-ext-install pdo_mysql pdo_sqlite mbstring zip pcntl xml \
+RUN apk add --no-cache git unzip libzip-dev libxml2-dev oniguruma-dev sqlite-dev postgresql-dev $PHPIZE_DEPS \
+    && docker-php-ext-install pdo_mysql pdo_pgsql pdo_sqlite mbstring zip pcntl xml \
     && pecl install redis \
     && docker-php-ext-enable redis \
     && apk del $PHPIZE_DEPS
